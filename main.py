@@ -24,6 +24,16 @@ for i in range(WIDTH*HEIGHT):
     else:
         grid.append(Cell(False))
 
+for y in range(HEIGHT):
+    for x in range(WIDTH):
+        if grid[index(x,y)].is_bomb:
+            continue
+        for y2 in range(-1,2):
+            for x2 in range(-1,2):
+                if x + x2 >= 0 and x + x2 < WIDTH and y + y2 >= 0 and y + y2 < HEIGHT and not (x == x2 and y == y2):
+                    if grid[index(x + x2, y + y2)].is_bomb:
+                        grid[index(x,y)].neigh_bombs += 1
+
 def get_char(cell):
     if not cell.revealed:
         return cell_icons["hidden"]
