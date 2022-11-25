@@ -1,0 +1,102 @@
+#+title: minesweeper-py
+
+* Introduction
+
+CLI Minesweeper written in Python for a school project.
+
+* Contributors
+
++ Muhammad Arif bin Mohd Hafeez
++ Muhammad Nasar bin Hizeusir xmaj
+
+* Code Script
+
+** Modules
+
+#+begin_src python
+import random
+#+end_src
+
+** Variables
+
+#+begin_src python
+WIDTH, HEIGHT, PROBABILITY = 10, 10, 80
+grid = []
+cell_icons = {
+    "hidden": " ",
+    "flagged": "+",
+    "bomb": "#",
+    "value": [" ", "1", "2", "3", "4", "5", "6", "7", "8"]
+}
+#+end_src
+
+~WIDTH~, ~HEIGHT~ use for width and height of the board (~grid~). ~PROBABILITY~ is the chance (%) that a given cell will be a bomb.
+
+~cell_icons~ is stores the character for the cell that ~show_grid()~ displays.
+
+** Index Function
+
+#+begin_src python
+index = lambda x, y : x + y * WIDTH
+#+end_src
+
+Returns the index of the given (x,y) coordinates. This is used because the grid is a one dimentional array but we use (x,y) coordinates to make life easier.
+
+** Cell Class
+
+#+begin_src python
+class Cell:
+    def __init__(self, is_bomb):
+        self.is_bomb = is_bomb
+        self.revealed = True
+        self.flagged = False
+        self.neigh_bombs = 0
+#+end_src
+
+~self.neigh_bombs~ stores the number of neighboring cells (in an 3x3 grid) that are bombs.
+
+** Grid Initialization
+
+#+begin_src python
+for i in range(WIDTH*HEIGHT):
+    if random.randint(1,100) >= PROBABILITY:
+        grid.append(Cell(True))
+    else:
+        grid.append(Cell(False))
+#+end_src
+
+Appends a ~Cell~ with ~self.is_bomb~ set to ~True~ if it meets the probability conditions.
+
+** Cell Icons
+
+#+begin_src python
+def get_char(cell):
+    if not cell.revealed:
+        return cell_icons["hidden"]
+    if cell.flagged:
+        return cell_icons["flagged"]
+    if cell.is_bomb:
+        return cell_icons["bomb"]
+    return cell_icons["value"][cell.neigh_bombs]
+#+end_src
+
+Returns the character from ~cell_icons~ for ~cell~ according to its conditions.
+
+** Grid Display
+
+#+begin_src python
+def show_grid():
+    for y in range(HEIGHT):
+        for x in range(WIDTH):
+            print(f"[{get_char(grid[index(x,y)])}]", end=" ")
+        print()
+#+end_src
+
+** Main Function
+
+#+begin_src python
+if __name__ == "__main__":
+    show_grid()
+#+end_src
+
+This simulates a main function and is used to make code easier to understand. Recommended for people who use multiple languages and perfectionists.
