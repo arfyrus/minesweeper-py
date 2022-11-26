@@ -15,6 +15,7 @@ CLI Minesweeper written in Python for a school project.
 
 #+begin_src python
 import random
+import re
 #+end_src
 
 ** Variables
@@ -22,6 +23,7 @@ import random
 #+begin_src python
 WIDTH, HEIGHT, PROBABILITY = 10, 10, 80
 grid = []
+bomb_num, wrong_bomb = 0, 0
 cell_icons = {
     "hidden": " ",
     "flagged": "+",
@@ -30,9 +32,11 @@ cell_icons = {
 }
 #+end_src
 
-~WIDTH~, ~HEIGHT~ use for width and height of the board (~grid~). ~PROBABILITY~ is the chance (%) that a given cell will be a bomb.
+~WIDTH~, ~HEIGHT~ use for width and height of ~grid~. ~PROBABILITY~ is the chance (%) that a given cell will be a bomb.
 
 ~cell_icons~ is stores the character for the cell that ~show_grid()~ displays.
+
+~bomb_num~ stores the number of bombs and is reduced when a cell with a bomb is flagged. ~wrong_bomb~ stores the number of cells without bombs that have been flagged. When both of these numbers are 0, the game ends with the player winning.
 
 ** Index Function
 
@@ -61,6 +65,7 @@ class Cell:
 for i in range(WIDTH*HEIGHT):
     if random.randint(1,100) >= PROBABILITY:
         grid.append(Cell(True))
+        bomb_num += 1
     else:
         grid.append(Cell(False))
 #+end_src
@@ -74,21 +79,21 @@ for y in range(HEIGHT):
             continue
         for y2 in range(-1,2):
             for x2 in range(-1,2):
-                if x + x2 >= 0 and x + x2 < WIDTH and y + y2 >= 0 and y + y2 < HEIGHT and not (x == x2 and y == y2):
+                if x + x2 >= 0 and x + x2 < WIDTH and y + y2 >= 0 and y + y2 < HEIGHT:
                     if grid[index(x + x2, y + y2)].is_bomb:
                         grid[index(x,y)].neigh_bombs += 1
 #+end_src
 
-Checks the surroundings of each cell for bombs. The last if statement is unnecessary.
+Checks the surroundings of each cell for bombs.
 
 ** Cell Icons
 
 #+begin_src python
 def get_char(cell):
-    if not cell.revealed:
-        return cell_icons["hidden"]
     if cell.flagged:
         return cell_icons["flagged"]
+    if not cell.revealed:
+        return cell_icons["hidden"]
     if cell.is_bomb:
         return cell_icons["bomb"]
     return cell_icons["value"][cell.neigh_bombs]
@@ -100,17 +105,98 @@ Returns the character from ~cell_icons~ for ~cell~ according to its conditions.
 
 #+begin_src python
 def show_grid():
-    for y in range(HEIGHT):
-        for x in range(WIDTH):
-            print(f"[{get_char(grid[index(x,y)])}]", end=" ")
+    print(f"---[{bomb_num}]---")
+    for y in range(-1, HEIGHT):
+        for x in range(-1, WIDTH):
+            if y == -1 and x == -1:
+                print(f"[  ]", end=" ")
+            elif y == -1:
+                print(f"[{x + 1: >2}]", end=" ")
+            elif x == -1:
+                print(f"[{y + 1: >2}]", end=" ")
+            else:
+                print(f"({get_char(grid[index(x,y)])})", end=" ")
         print()
 #+end_src
+
+Prints a divider and the number of remaining, unflagged cells with bombs. The nested loop begin at -1 because the first row and collumn is reserved to show the x and y to make it easier for the player to choose a cell to reveal and flag. This makes the grid look a bit imperfect because the cells' fixed width have to increased if the grid has more than 10 collumns. The brackets around the cells look different if its the first row or collumns to differentiate between cells and axes.
+
+** Reveal Cell Function
+
+#+begin_src python
+def reveal_cell(x, y):
+    if grid[index(x,y)].is_bomb:
+        return 'L'
+    if grid[index(x,y)].revealed:
+        return ' '
+
+    grid[index(x,y)].revealed = True
+    if grid[index(x,y)].neigh_bombs > 0:
+        return ' '
+
+    for y2 in range(-1,2):
+        for x2 in range(-1,2):
+            if x + x2 >= 0 and x + x2 < WIDTH and y + y2 >= 0 and y + y2 < HEIGHT and not (x2 == 0 and y2 == 0):
+                reveal_cell(x + x2, y + y2)
+    return ' '
+#+end_src
+
+Reveals the cell at the given coordinates. It returns a specific character if the cell is a bomb to tell the main function to end the game. All other instances return an empty string.
+
+If the cell at the given coordinates has no neighbouring bombs, it recursively reveals cells around it and repeats the cycle. This is to make the game less tedious.
 
 ** Main Function
 
 #+begin_src python
-if __name__ == "__main__":
+if __name__ == '__main__':
+    while True:
+        show_grid()
+        choice = input("Select choice ([ reveal(r) / toggle flag(f) ] x,y): ")
+        r_or_f = re.split(r"\s", choice)[0]
+        choiceX, choiceY = re.split(r",", re.split(r"\s", choice)[1])
+        choiceX, choiceY = int(choiceX) - 1, int(choiceY) - 1
+        if r_or_f == "r" or r_or_f == "reveal":
+            if reveal_cell(choiceX, choiceY) == 'L':
+                print("You hit a bomb!")
+                break
+        elif r_or_f == "f" or r_or_f == "flag":
+            cell_index = index(choiceX, choiceY)
+            grid[cell_index].flagged = not grid[cell_index].flagged
+            if grid[cell_index].flagged:
+                if grid[cell_index].is_bomb:
+                    bomb_num -= 1
+                else:
+                    wrong_bomb += 1
+            else:
+                if grid[cell_index].is_bomb:
+                    bomb_num += 1
+                else:
+                    wrong_bomb -= 1
+            if bomb_num == 0 and wrong_bomb == 0:
+                print("You won!")
+                break
+    for i in grid:
+        i.revealed = True
     show_grid()
 #+end_src
 
-This simulates a main function and is used to make code easier to understand. Recommended for people who use multiple languages and perfectionists.
+The first line simulates a main function and is used to make code easier to understand. Recommended for people who use multiple languages and perfectionists.
+
+The input should be formatted like the following examples.
+
+#+begin_src shell
+>>> reveal 5,4
+>>> f 3,6
+#+end_src
+
+Using RegEx, it splits the action (reveal or flag) into ~r_or_f~ and the coordinates into ~choiceX~ and ~choiceY~ and converts the string into integers.
+
+1. Reveal
+
+   If the ~reveal_cell~ function returns an ='L'=, indicating the cell revealed is a bomb, it prints a losing message and breaks the while loop.
+
+2. Flag
+
+    The flag state of the chosen cell is toggled. If the cell is currently flagged and is a bomb, the player has chosen the correct cell ~bomb-num~ is decremented. If it isn't a bomb, then ~wrong_bomb~, the number of cells wrongfully flagged, is incremented. If the cells is currently unflagged and if it was a bomb, ~bomb_num~ is incremented and if not ~wrong_bomb~ is decremented.
+
+If the both ~bomb_num~ and ~wrong_bomb~ are 0, then a winning message is printed and the while loop breaks. All cells are revealed and the grid is displayed one last time.
